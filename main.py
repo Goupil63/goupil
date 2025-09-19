@@ -29,21 +29,26 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("vinted-bot")
 
 # ----------------------
-# 3. GESTION MEMOIRE
+# 3. MÉMOIRE PERSISTANTE
 # ----------------------
-if os.path.exists(SEEN_FILE):
-    try:
-        with open(SEEN_FILE, "r") as f:
-            seen_items = set(json.load(f))
-    except Exception:
-        seen_items = set()
-else:
-    seen_items = set()
+def load_seen():
+    if os.path.exists(SEEN_FILE):
+        try:
+            with open(SEEN_FILE, "r", encoding="utf-8") as f:
+                return set(json.load(f))
+        except Exception as e:
+            logger.error(f"Erreur lecture {SEEN_FILE}: {e}")
+    return set()
 
-def save_seen():
-    """Sauvegarde la liste des annonces déjà vues dans seen.json"""
-    with open(SEEN_FILE, "w") as f:
-        json.dump(list(seen_items), f)
+def save_seen(seen_items):
+    try:
+        with open(SEEN_FILE, "w", encoding="utf-8") as f:
+            json.dump(list(seen_items), f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error(f"Erreur écriture {SEEN_FILE}: {e}")
+
+seen_items = load_seen()
+logger.info(f"📂 {len(seen_items)} annonces déjà connues (mémoire persistante)")
 
 # ----------------------
 # 4. SESSION HTTP
@@ -68,8 +73,10 @@ def send_to_discord(title, price, link):
     }
     try:
         resp = session.post(DISCORD_WEBHOOK, json=data, timeout=10)
-        if resp.status_code // 100 != 2:
-            logger.warning(f"Discord Webhook renvoyé {resp.status_code}")
+        if resp.status_code == 429:
+            logger.warning("⚠️ Rate limit Discord (429). Message ignoré.")
+        elif resp.status_code // 100 != 2:
+            logger.warning(f"⚠️ Discord Webhook renvoyé {resp.status_code}")
     except Exception as e:
         logger.error(f"Erreur en envoyant à Discord : {e}")
 
@@ -77,6 +84,7 @@ def send_to_discord(title, price, link):
 # 6. SCRAPER VINTED
 # ----------------------
 def check_vinted():
+    global seen_items
     try:
         resp = session.get(VINTED_URL, timeout=12)
         if resp.status_code != 200:
@@ -110,7 +118,7 @@ def check_vinted():
                 if link in seen_items:
                     continue
                 seen_items.add(link)
-                save_seen()
+                save_seen(seen_items)
                 new_items_count += 1
 
                 logger.info(f"📬 Nouvelle annonce : {title} - {price}\n🔗 {link}")
