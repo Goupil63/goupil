@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 # ----------------------
 VINTED_URL = os.getenv("VINTED_URL")
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK")
+SEEN_FILE = "seen.json"
 
 if not VINTED_URL:
     raise SystemExit("⚠️ VINTED_URL non configuré dans les Secrets.")
@@ -19,8 +20,7 @@ if not DISCORD_WEBHOOK:
 
 MIN_INTERVAL = 180  # 3 minutes
 MAX_JITTER = 120    # jusqu'à 2 minutes aléatoires
-SEEN_FILE = "seen.json"
-seen_items = set()
+MAX_LAST_ITEMS = 20
 
 # ----------------------
 # 2. LOGGING
@@ -39,17 +39,13 @@ session.headers.update({
 })
 
 # ----------------------
-# 4. MÉMOIRE DES ANNONCES
+# 4. MÉMOIRE PERSISTANTE
 # ----------------------
-def load_seen():
-    global seen_items
-    try:
-        with open(SEEN_FILE, "r") as f:
-            seen_items = set(json.load(f))
-            logger.info(f"🔹 {len(seen_items)} annonces déjà vues chargées")
-    except:
-        seen_items = set()
-        logger.info("🔹 Aucun fichier seen.json, démarrage propre")
+if os.path.exists(SEEN_FILE):
+    with open(SEEN_FILE, "r") as f:
+        seen_items = set(json.load(f))
+else:
+    seen_items = set()
 
 def save_seen():
     with open(SEEN_FILE, "w") as f:
@@ -59,6 +55,9 @@ def save_seen():
 # 5. ENVOI DISCORD
 # ----------------------
 def send_to_discord(title, price, link):
+    if not title or not link:
+        logger.warning("Titre ou lien vide, notification Discord ignorée")
+        return
     data = {
         "embeds": [{
             "title": f"{title} - {price}",
@@ -68,12 +67,8 @@ def send_to_discord(title, price, link):
     }
     try:
         resp = session.post(DISCORD_WEBHOOK, json=data, timeout=10)
-        if resp.status_code == 429:  # Trop de requêtes
-            logger.warning("⚠️ Trop de requêtes Discord (429), attente 5 secondes...")
-            time.sleep(5)
-            resp = session.post(DISCORD_WEBHOOK, json=data, timeout=10)
         if resp.status_code // 100 != 2:
-            logger.warning(f"⚠️ Discord Webhook renvoyé {resp.status_code}")
+            logger.warning(f"Discord Webhook renvoyé {resp.status_code}")
     except Exception as e:
         logger.error(f"Erreur en envoyant à Discord : {e}")
 
@@ -94,30 +89,38 @@ def check_vinted():
             return
 
         items = container.find_all("div", class_="feed-grid__item")
+        items = items[-MAX_LAST_ITEMS:]  # limiter aux 20 derniers
         logger.info(f"📦 {len(items)} annonces détectées sur la page")
 
         new_items_count = 0
-        for item in items[:20]:  # On ne prend que les 20 dernières
+        for item in items:
             try:
-                title = item.get_text(separator="\n").split("\n")[0].strip()
+                title = item.get_text(separator="\n").split("\n")[0]
+
+                # Lien sécurisé
                 link_tag = item.find("a", href=True)
-                link = "https://www.vinted.fr" + link_tag['href'] if link_tag else None
+                href = link_tag['href'] if link_tag else ""
+                if href.startswith("http"):
+                    link = href
+                else:
+                    link = "https://www.vinted.fr" + href
+
                 price_tag = item.find("div", {"data-testid": "item-price"})
                 price = price_tag.get_text(strip=True) if price_tag else "Prix non trouvé"
 
-                if not link or link in seen_items:
+                if link in seen_items:
                     continue
                 seen_items.add(link)
                 new_items_count += 1
 
                 logger.info(f"📬 Nouvelle annonce : {title} - {price}\n🔗 {link}")
                 send_to_discord(title, price, link)
-                time.sleep(2)
 
             except Exception as e:
                 logger.error(f"Erreur traitement annonce : {e}")
 
         save_seen()
+
         if new_items_count == 0:
             logger.info("✅ Aucune nouvelle annonce")
         else:
@@ -130,7 +133,6 @@ def check_vinted():
 # 7. BOUCLE BOT
 # ----------------------
 def bot_loop():
-    load_seen()
     while True:
         check_vinted()
         delay = MIN_INTERVAL + random.uniform(0, MAX_JITTER)
