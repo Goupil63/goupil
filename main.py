@@ -2,16 +2,15 @@ import os
 import time
 import random
 import logging
-import requests
 import json
+import requests
 from bs4 import BeautifulSoup
 
 # ----------------------
 # 1. CONFIGURATION
 # ----------------------
-VINTED_URL = os.getenv("VINTED_URL")  # Exemple : "https://www.vinted.fr/catalog?search_text=sac&order=newest_first"
+VINTED_URL = os.getenv("VINTED_URL")
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK")
-SEEN_FILE = "seen.json"  # mémoire persistante
 
 if not VINTED_URL:
     raise SystemExit("⚠️ VINTED_URL non configuré dans les Secrets.")
@@ -20,7 +19,8 @@ if not DISCORD_WEBHOOK:
 
 MIN_INTERVAL = 180  # 3 minutes
 MAX_JITTER = 120    # jusqu'à 2 minutes aléatoires
-MAX_ANNOUNCES = 20  # nombre maximum d'annonces à vérifier
+SEEN_FILE = "seen.json"
+seen_items = set()
 
 # ----------------------
 # 2. LOGGING
@@ -39,13 +39,17 @@ session.headers.update({
 })
 
 # ----------------------
-# 4. MÉMOIRE PERSISTANTE
+# 4. MÉMOIRE DES ANNONCES
 # ----------------------
-if os.path.exists(SEEN_FILE):
-    with open(SEEN_FILE, "r") as f:
-        seen_items = set(json.load(f))
-else:
-    seen_items = set()
+def load_seen():
+    global seen_items
+    try:
+        with open(SEEN_FILE, "r") as f:
+            seen_items = set(json.load(f))
+            logger.info(f"🔹 {len(seen_items)} annonces déjà vues chargées")
+    except:
+        seen_items = set()
+        logger.info("🔹 Aucun fichier seen.json, démarrage propre")
 
 def save_seen():
     with open(SEEN_FILE, "w") as f:
@@ -64,8 +68,12 @@ def send_to_discord(title, price, link):
     }
     try:
         resp = session.post(DISCORD_WEBHOOK, json=data, timeout=10)
+        if resp.status_code == 429:  # Trop de requêtes
+            logger.warning("⚠️ Trop de requêtes Discord (429), attente 5 secondes...")
+            time.sleep(5)
+            resp = session.post(DISCORD_WEBHOOK, json=data, timeout=10)
         if resp.status_code // 100 != 2:
-            logger.warning(f"Discord Webhook renvoyé {resp.status_code}")
+            logger.warning(f"⚠️ Discord Webhook renvoyé {resp.status_code}")
     except Exception as e:
         logger.error(f"Erreur en envoyant à Discord : {e}")
 
@@ -85,31 +93,31 @@ def check_vinted():
             logger.warning("❌ Container feed-grid non trouvé")
             return
 
-        items = container.find_all("div", class_="feed-grid__item")[:MAX_ANNOUNCES]
+        items = container.find_all("div", class_="feed-grid__item")
         logger.info(f"📦 {len(items)} annonces détectées sur la page")
 
         new_items_count = 0
-        for item in items:
+        for item in items[:20]:  # On ne prend que les 20 dernières
             try:
-                title = item.get_text(separator="\n").split("\n")[0]
+                title = item.get_text(separator="\n").split("\n")[0].strip()
                 link_tag = item.find("a", href=True)
-                link = "https://www.vinted.fr" + link_tag['href'] if link_tag else "Lien non trouvé"
+                link = "https://www.vinted.fr" + link_tag['href'] if link_tag else None
                 price_tag = item.find("div", {"data-testid": "item-price"})
                 price = price_tag.get_text(strip=True) if price_tag else "Prix non trouvé"
 
-                if link in seen_items:
+                if not link or link in seen_items:
                     continue
-
                 seen_items.add(link)
-                save_seen()
                 new_items_count += 1
 
                 logger.info(f"📬 Nouvelle annonce : {title} - {price}\n🔗 {link}")
                 send_to_discord(title, price, link)
+                time.sleep(2)
 
             except Exception as e:
                 logger.error(f"Erreur traitement annonce : {e}")
 
+        save_seen()
         if new_items_count == 0:
             logger.info("✅ Aucune nouvelle annonce")
         else:
@@ -122,6 +130,7 @@ def check_vinted():
 # 7. BOUCLE BOT
 # ----------------------
 def bot_loop():
+    load_seen()
     while True:
         check_vinted()
         delay = MIN_INTERVAL + random.uniform(0, MAX_JITTER)
