@@ -68,12 +68,48 @@ def send_to_discord(title, price, link, img_url):
 # ----------------------
 # 5. SCRAPER VINTED
 # ----------------------
+from bs4 import BeautifulSoup
+
 def parse_vinted_list(html):
     soup = BeautifulSoup(html, "html.parser")
-    items = soup.find_all("div", {"data-testid": "item"})
-    if not items:
-        items = soup.select("a[href*='/articles/']")
-    return items
+    
+    # On récupère tous les div qui contiennent les annonces
+    items = soup.find_all("div", class_=lambda x: x and "box--item-details" in x)
+    
+    annonces = []
+    for item in items:
+        try:
+            # Titre
+            title_tag = item.find("h1", class_="web_ui__Text__text web_ui__Text__title web_ui__Text__left")
+            title = title_tag.get_text(strip=True) if title_tag else "Sans titre"
+            
+            # Prix
+            price_tag = item.find("p", class_="web_ui__Text__text web_ui__Text__subtitle web_ui__Text__left")
+            price = price_tag.get_text(strip=True) if price_tag else "Prix non affiché"
+            
+            # Lien
+            link_tag = item.find("a", href=True)
+            link = "https://www.vinted.fr" + link_tag['href'] if link_tag else ""
+            
+            # Image
+            img_tag = item.find("img")
+            img = img_tag.get("src") if img_tag else ""
+            
+            # Ajouter à la liste des annonces
+            annonces.append({
+                "title": title,
+                "price": price,
+                "link": link,
+                "img": img
+            })
+        except Exception as e:
+            print(f"Erreur lors du parsing d'une annonce: {e}")
+    
+    return annonces
+
+
+
+
 
 def check_vinted():
     retries = 0
@@ -82,25 +118,20 @@ def check_vinted():
             resp = session.get(VINTED_URL, timeout=REQUEST_TIMEOUT)
             if resp.status_code == 200:
                 items = parse_vinted_list(resp.text)
-
                 new_items_count = 0
-                for item in items:
-                    link_tag = item if item.name == "a" else item.find("a", href=True)
-                    if not link_tag: continue
-                    href = link_tag.get("href")
-                    if not href: continue
-                    link = href if href.startswith("http") else "https://www.vinted.fr" + href
 
+                for item in items:
+                    link = item["link"]
                     if link in seen_items:
                         continue
                     seen_items.add(link)
                     new_items_count += 1
 
-                    title = item.get_text(strip=True) or "Sans titre"
-                    price = "Prix non affiché"
-                    img_element = item.find("img")
-                    img = img_element.get("src") if img_element else ""
+                    title = item["title"]
+                    price = item["price"]
+                    img = item["img"]
 
+                    # Log et envoi Discord
                     logger.info(f"📦 Nouvelle annonce : {title} - {price}\n🔗 {link}")
                     send_to_discord(title, price, link, img)
 
@@ -109,19 +140,25 @@ def check_vinted():
                 else:
                     logger.info(f"📬 {new_items_count} nouvelles annonces envoyées")
                 return
+
+            elif resp.status_code in (429, 503, 502):
+                raise requests.HTTPError(f"Status {resp.status_code}")
             else:
                 logger.warning(f"Réponse inattendue {resp.status_code}")
                 return
+
         except Exception as e:
             retries += 1
-            sleep_time = random.uniform(2,5)
-            logger.debug(f"Erreur {e}, retry dans {sleep_time:.1f}s (essai {retries}/{MAX_RETRIES})")
-            time.sleep(sleep_time)
             if retries > MAX_RETRIES:
                 backoff = BACKOFF_BASE * (2 ** (retries - MAX_RETRIES))
                 logger.warning(f"Erreur persistante {e}. Pause {backoff}s.")
                 time.sleep(backoff)
                 return
+            else:
+                sleep_time = random.uniform(2,5)
+                logger.debug(f"Erreur {e}, retry dans {sleep_time:.1f}s (essai {retries}/{MAX_RETRIES})")
+                time.sleep(sleep_time)
+
 
 # ----------------------
 # 6. BOUCLE BOT
