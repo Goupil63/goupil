@@ -1,13 +1,15 @@
 import os
+import time
+import random
 import logging
-import requests
 import json
+import requests
 from bs4 import BeautifulSoup
 
 # ----------------------
 # 1. CONFIGURATION
 # ----------------------
-VINTED_URL = os.getenv("VINTED_URL")  # ex: "https://www.vinted.fr/catalog?search_text=sac&order=newest_first"
+VINTED_URL = os.getenv("VINTED_URL")
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK")
 
 if not VINTED_URL:
@@ -15,6 +17,8 @@ if not VINTED_URL:
 if not DISCORD_WEBHOOK:
     raise SystemExit("⚠️ DISCORD_WEBHOOK non configuré dans les Secrets.")
 
+MIN_INTERVAL = 180  # 3 minutes
+MAX_JITTER = 120    # jusqu'à 2 minutes aléatoires
 SEEN_FILE = "seen.json"
 
 # ----------------------
@@ -24,29 +28,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("vinted-bot")
 
 # ----------------------
-# 3. MÉMOIRE PERSISTANTE
-# ----------------------
-def load_seen():
-    if os.path.exists(SEEN_FILE):
-        try:
-            with open(SEEN_FILE, "r", encoding="utf-8") as f:
-                return set(json.load(f))
-        except Exception as e:
-            logger.error(f"Erreur lecture {SEEN_FILE}: {e}")
-    return set()
-
-def save_seen(seen_items):
-    try:
-        with open(SEEN_FILE, "w", encoding="utf-8") as f:
-            json.dump(list(seen_items), f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        logger.error(f"Erreur écriture {SEEN_FILE}: {e}")
-
-seen_items = load_seen()
-logger.info(f"📂 {len(seen_items)} annonces déjà connues")
-
-# ----------------------
-# 4. SESSION HTTP
+# 3. SESSION HTTP
 # ----------------------
 session = requests.Session()
 session.headers.update({
@@ -54,6 +36,15 @@ session.headers.update({
                   "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept-Language": "fr-FR,fr;q=0.9"
 })
+
+# ----------------------
+# 4. CHARGEMENT DES ANNONCES VUES
+# ----------------------
+if os.path.exists(SEEN_FILE):
+    with open(SEEN_FILE, "r") as f:
+        seen_items = set(json.load(f))
+else:
+    seen_items = set()
 
 # ----------------------
 # 5. DISCORD
@@ -68,10 +59,8 @@ def send_to_discord(title, price, link):
     }
     try:
         resp = session.post(DISCORD_WEBHOOK, json=data, timeout=10)
-        if resp.status_code == 429:
-            logger.warning("⚠️ Rate limit Discord (429). Message ignoré.")
-        elif resp.status_code // 100 != 2:
-            logger.warning(f"⚠️ Discord Webhook renvoyé {resp.status_code}")
+        if resp.status_code // 100 != 2:
+            logger.warning(f"Discord Webhook renvoyé {resp.status_code}")
     except Exception as e:
         logger.error(f"Erreur en envoyant à Discord : {e}")
 
@@ -79,7 +68,6 @@ def send_to_discord(title, price, link):
 # 6. SCRAPER VINTED
 # ----------------------
 def check_vinted():
-    global seen_items
     try:
         resp = session.get(VINTED_URL, timeout=12)
         if resp.status_code != 200:
@@ -99,17 +87,14 @@ def check_vinted():
         for item in items:
             try:
                 title = item.get_text(separator="\n").split("\n")[0]
-
                 link_tag = item.find("a", href=True)
                 link = "https://www.vinted.fr" + link_tag['href'] if link_tag else "Lien non trouvé"
-
                 price_tag = item.find("div", {"data-testid": "item-price"})
                 price = price_tag.get_text(strip=True) if price_tag else "Prix non trouvé"
 
                 if link in seen_items:
                     continue
                 seen_items.add(link)
-                save_seen(seen_items)
                 new_items_count += 1
 
                 logger.info(f"📬 Nouvelle annonce : {title} - {price}\n🔗 {link}")
@@ -127,9 +112,19 @@ def check_vinted():
         logger.error(f"Erreur scraping : {e}")
 
 # ----------------------
-# 7. LANCEMENT
+# 7. BOUCLE BOT
+# ----------------------
+def bot_loop():
+    while True:
+        check_vinted()
+        delay = MIN_INTERVAL + random.uniform(0, MAX_JITTER)
+        logger.info(f"⏰ Prochaine vérification dans {int(delay)} secondes")
+        time.sleep(delay)
+
+# ----------------------
+# 8. LANCEMENT
 # ----------------------
 if __name__ == "__main__":
-    logger.info("🚀 Bot Vinted Requests (GitHub Actions) démarré")
+    logger.info("🚀 Bot Vinted Requests démarré")
     logger.info(f"📡 URL Vinted : {VINTED_URL}")
-    check_vinted()
+    bot_loop()
