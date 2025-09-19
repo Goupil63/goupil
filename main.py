@@ -3,6 +3,7 @@ import time
 import random
 import logging
 import requests
+import json
 from bs4 import BeautifulSoup
 
 # ----------------------
@@ -19,7 +20,7 @@ if not DISCORD_WEBHOOK:
 MIN_INTERVAL = 180  # 3 minutes
 MAX_JITTER = 120    # jusqu'à 2 minutes aléatoires
 
-seen_items = set()
+SEEN_FILE = "seen.json"
 
 # ----------------------
 # 2. LOGGING
@@ -28,7 +29,24 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("vinted-bot")
 
 # ----------------------
-# 3. SESSION HTTP
+# 3. GESTION MEMOIRE
+# ----------------------
+if os.path.exists(SEEN_FILE):
+    try:
+        with open(SEEN_FILE, "r") as f:
+            seen_items = set(json.load(f))
+    except Exception:
+        seen_items = set()
+else:
+    seen_items = set()
+
+def save_seen():
+    """Sauvegarde la liste des annonces déjà vues dans seen.json"""
+    with open(SEEN_FILE, "w") as f:
+        json.dump(list(seen_items), f)
+
+# ----------------------
+# 4. SESSION HTTP
 # ----------------------
 session = requests.Session()
 session.headers.update({
@@ -38,7 +56,7 @@ session.headers.update({
 })
 
 # ----------------------
-# 4. DISCORD
+# 5. DISCORD
 # ----------------------
 def send_to_discord(title, price, link):
     data = {
@@ -56,7 +74,7 @@ def send_to_discord(title, price, link):
         logger.error(f"Erreur en envoyant à Discord : {e}")
 
 # ----------------------
-# 5. SCRAPER VINTED
+# 6. SCRAPER VINTED
 # ----------------------
 def check_vinted():
     try:
@@ -92,6 +110,7 @@ def check_vinted():
                 if link in seen_items:
                     continue
                 seen_items.add(link)
+                save_seen()
                 new_items_count += 1
 
                 logger.info(f"📬 Nouvelle annonce : {title} - {price}\n🔗 {link}")
@@ -109,7 +128,7 @@ def check_vinted():
         logger.error(f"Erreur scraping : {e}")
 
 # ----------------------
-# 6. BOUCLE BOT
+# 7. BOUCLE BOT
 # ----------------------
 def bot_loop():
     while True:
@@ -119,7 +138,7 @@ def bot_loop():
         time.sleep(delay)
 
 # ----------------------
-# 7. LANCEMENT
+# 8. LANCEMENT
 # ----------------------
 if __name__ == "__main__":
     logger.info("🚀 Bot Vinted Requests démarré")
