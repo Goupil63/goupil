@@ -3,7 +3,7 @@ name: Vinted Alert
 on:
   schedule:
     - cron: "*/5 * * * *"  # toutes les 5 minutes
-  workflow_dispatch:        # permet de lancer à la main aussi
+  workflow_dispatch:
 
 jobs:
   run-script:
@@ -19,6 +19,6 @@ jobs:
         run: pip install -r requirements.txt
       - name: Run script
         env:
-          VINTED_URL: ${{ VINTED_URL }}
-          WEBHOOK_URL: ${{ DISCORD_WEBHOOK }}
+          VINTED_URL: ${{ secrets.VINTED_URL }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: python main.py
