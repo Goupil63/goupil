@@ -8,6 +8,7 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -21,6 +22,10 @@ jobs:
         run: pip install requests beautifulsoup4
 
       - name: Run Vinted Bot
+        env:
+          VINTED_URL: ${{ secrets.VINTED_URL }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: python main.py
 
       - name: Commit seen.json
