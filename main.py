@@ -2,15 +2,16 @@ import os
 import time
 import random
 import logging
-import json
 import requests
+import json
 from bs4 import BeautifulSoup
 
 # ----------------------
 # 1. CONFIGURATION
 # ----------------------
-VINTED_URL = os.getenv("VINTED_URL")
+VINTED_URL = os.getenv("VINTED_URL")  # Exemple : "https://www.vinted.fr/catalog?search_text=sac&order=newest_first"
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK")
+SEEN_FILE = "seen.json"  # mémoire persistante
 
 if not VINTED_URL:
     raise SystemExit("⚠️ VINTED_URL non configuré dans les Secrets.")
@@ -19,7 +20,7 @@ if not DISCORD_WEBHOOK:
 
 MIN_INTERVAL = 180  # 3 minutes
 MAX_JITTER = 120    # jusqu'à 2 minutes aléatoires
-SEEN_FILE = "seen.json"
+MAX_ANNOUNCES = 20  # nombre maximum d'annonces à vérifier
 
 # ----------------------
 # 2. LOGGING
@@ -38,7 +39,7 @@ session.headers.update({
 })
 
 # ----------------------
-# 4. CHARGEMENT DES ANNONCES VUES
+# 4. MÉMOIRE PERSISTANTE
 # ----------------------
 if os.path.exists(SEEN_FILE):
     with open(SEEN_FILE, "r") as f:
@@ -46,8 +47,12 @@ if os.path.exists(SEEN_FILE):
 else:
     seen_items = set()
 
+def save_seen():
+    with open(SEEN_FILE, "w") as f:
+        json.dump(list(seen_items), f)
+
 # ----------------------
-# 5. DISCORD
+# 5. ENVOI DISCORD
 # ----------------------
 def send_to_discord(title, price, link):
     data = {
@@ -80,7 +85,7 @@ def check_vinted():
             logger.warning("❌ Container feed-grid non trouvé")
             return
 
-        items = container.find_all("div", class_="feed-grid__item")
+        items = container.find_all("div", class_="feed-grid__item")[:MAX_ANNOUNCES]
         logger.info(f"📦 {len(items)} annonces détectées sur la page")
 
         new_items_count = 0
@@ -94,7 +99,9 @@ def check_vinted():
 
                 if link in seen_items:
                     continue
+
                 seen_items.add(link)
+                save_seen()
                 new_items_count += 1
 
                 logger.info(f"📬 Nouvelle annonce : {title} - {price}\n🔗 {link}")
