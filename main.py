@@ -1,9 +1,10 @@
+# main.py
 import os
 import time
 import random
 import logging
-import json
 import requests
+import json
 from bs4 import BeautifulSoup
 
 # ----------------------
@@ -20,7 +21,6 @@ if not DISCORD_WEBHOOK:
 
 MIN_INTERVAL = 180  # 3 minutes
 MAX_JITTER = 120    # jusqu'à 2 minutes aléatoires
-MAX_LAST_ITEMS = 20
 
 # ----------------------
 # 2. LOGGING
@@ -39,7 +39,7 @@ session.headers.update({
 })
 
 # ----------------------
-# 4. MÉMOIRE PERSISTANTE
+# 4. MEMOIRE PERSISTANTE
 # ----------------------
 if os.path.exists(SEEN_FILE):
     with open(SEEN_FILE, "r") as f:
@@ -52,9 +52,9 @@ def save_seen():
         json.dump(list(seen_items), f)
 
 # ----------------------
-# 5. ENVOI DISCORD
+# 5. DISCORD
 # ----------------------
-def send_to_discord(title, price, link):
+def send_to_discord(title, price, link, img_url=""):
     if not title or not link:
         logger.warning("Titre ou lien vide, notification Discord ignorée")
         return
@@ -62,7 +62,8 @@ def send_to_discord(title, price, link):
         "embeds": [{
             "title": f"{title} - {price}",
             "url": link,
-            "color": 3447003
+            "color": 3447003,
+            "image": {"url": img_url} if img_url else None
         }]
     }
     try:
@@ -89,32 +90,38 @@ def check_vinted():
             return
 
         items = container.find_all("div", class_="feed-grid__item")
-        items = items[-MAX_LAST_ITEMS:]  # limiter aux 20 derniers
         logger.info(f"📦 {len(items)} annonces détectées sur la page")
 
         new_items_count = 0
-        for item in items:
+        for item in items[:20]:  # dernière 20 annonces seulement
             try:
-                title = item.get_text(separator="\n").split("\n")[0]
-
-                # Lien sécurisé
+                # Lien
                 link_tag = item.find("a", href=True)
-                href = link_tag['href'] if link_tag else ""
-                if href.startswith("http"):
-                    link = href
-                else:
-                    link = "https://www.vinted.fr" + href
-
-                price_tag = item.find("div", {"data-testid": "item-price"})
-                price = price_tag.get_text(strip=True) if price_tag else "Prix non trouvé"
+                if not link_tag:
+                    continue
+                link = link_tag['href']
+                if not link.startswith("http"):
+                    link = "https://www.vinted.fr" + link
 
                 if link in seen_items:
                     continue
                 seen_items.add(link)
                 new_items_count += 1
 
+                # Titre
+                title_tag = item.find("h3") or item.find("h1") or item.find("h2")
+                title = title_tag.get_text(strip=True) if title_tag else "Sans titre"
+
+                # Prix
+                price_tag = item.find("div", {"data-testid": "item-price"})
+                price = price_tag.get_text(strip=True) if price_tag else "Prix non trouvé"
+
+                # Image
+                img_tag = item.find("img")
+                img_url = img_tag['src'] if img_tag and img_tag.get('src') else ""
+
                 logger.info(f"📬 Nouvelle annonce : {title} - {price}\n🔗 {link}")
-                send_to_discord(title, price, link)
+                send_to_discord(title, price, link, img_url)
 
             except Exception as e:
                 logger.error(f"Erreur traitement annonce : {e}")
