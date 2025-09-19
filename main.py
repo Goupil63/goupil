@@ -41,15 +41,17 @@ session.headers.update({
 # ----------------------
 # 4. MEMOIRE PERSISTANTE
 # ----------------------
-if os.path.exists(SEEN_FILE):
-    with open(SEEN_FILE, "r") as f:
-        seen_items = set(json.load(f))
-else:
-    seen_items = set()
+def load_seen():
+    if os.path.exists(SEEN_FILE):
+        with open(SEEN_FILE, "r") as f:
+            return set(json.load(f))
+    return set()
 
-def save_seen():
+def save_seen(seen_items):
     with open(SEEN_FILE, "w") as f:
         json.dump(list(seen_items), f)
+
+seen_items = load_seen()
 
 # ----------------------
 # 5. DISCORD
@@ -76,6 +78,40 @@ def send_to_discord(title, price, link, img_url=""):
 # ----------------------
 # 6. SCRAPER VINTED
 # ----------------------
+def fetch_latest_links():
+    """Récupère les 20 dernières annonces et initialise seen_items si vide"""
+    try:
+        resp = session.get(VINTED_URL, timeout=12)
+        if resp.status_code != 200:
+            logger.warning(f"Réponse inattendue {resp.status_code}")
+            return []
+        soup = BeautifulSoup(resp.text, "html.parser")
+        container = soup.find("div", class_="feed-grid")
+        if not container:
+            logger.warning("❌ Container feed-grid non trouvé")
+            return []
+        items = container.find_all("div", class_="feed-grid__item")
+        links = []
+        for item in items[:20]:
+            link_tag = item.find("a", href=True)
+            if not link_tag:
+                continue
+            link = link_tag['href']
+            if not link.startswith("http"):
+                link = "https://www.vinted.fr" + link
+            links.append(link)
+        return links
+    except Exception as e:
+        logger.error(f"Erreur récupération des derniers liens : {e}")
+        return []
+
+# Initialisation seen_items au premier lancement
+if not seen_items:
+    latest_links = fetch_latest_links()
+    seen_items.update(latest_links)
+    save_seen(seen_items)
+    logger.info(f"⚡ Initialisation : {len(latest_links)} dernières annonces mémorisées.")
+
 def check_vinted():
     try:
         resp = session.get(VINTED_URL, timeout=12)
@@ -93,7 +129,7 @@ def check_vinted():
         logger.info(f"📦 {len(items)} annonces détectées sur la page")
 
         new_items_count = 0
-        for item in items[:20]:  # dernière 20 annonces seulement
+        for item in items[:20]:
             try:
                 # Lien
                 link_tag = item.find("a", href=True)
@@ -102,7 +138,6 @@ def check_vinted():
                 link = link_tag['href']
                 if not link.startswith("http"):
                     link = "https://www.vinted.fr" + link
-
                 if link in seen_items:
                     continue
                 seen_items.add(link)
@@ -122,11 +157,10 @@ def check_vinted():
 
                 logger.info(f"📬 Nouvelle annonce : {title} - {price}\n🔗 {link}")
                 send_to_discord(title, price, link, img_url)
-
             except Exception as e:
                 logger.error(f"Erreur traitement annonce : {e}")
 
-        save_seen()
+        save_seen(seen_items)
 
         if new_items_count == 0:
             logger.info("✅ Aucune nouvelle annonce")
