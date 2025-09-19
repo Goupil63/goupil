@@ -20,5 +20,5 @@ jobs:
       - name: Run script
         env:
           VINTED_URL: ${{ secrets.VINTED_URL }}
-          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK }}
         run: python main.py
