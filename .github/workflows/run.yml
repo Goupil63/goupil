@@ -19,6 +19,6 @@ jobs:
         run: pip install -r requirements.txt
       - name: Run script
         env:
-          VINTED_URL: ${{ secrets.VINTED_URL }}
-          WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK }}
+          VINTED_URL: ${{ VINTED_URL }}
+          WEBHOOK_URL: ${{ DISCORD_WEBHOOK }}
         run: python main.py
