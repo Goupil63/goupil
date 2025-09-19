@@ -1,6 +1,4 @@
 import os
-import time
-import random
 import logging
 import requests
 import json
@@ -16,9 +14,6 @@ if not VINTED_URL:
     raise SystemExit("⚠️ VINTED_URL non configuré dans les Secrets.")
 if not DISCORD_WEBHOOK:
     raise SystemExit("⚠️ DISCORD_WEBHOOK non configuré dans les Secrets.")
-
-MIN_INTERVAL = 180  # 3 minutes
-MAX_JITTER = 120    # jusqu'à 2 minutes aléatoires
 
 SEEN_FILE = "seen.json"
 
@@ -48,7 +43,7 @@ def save_seen(seen_items):
         logger.error(f"Erreur écriture {SEEN_FILE}: {e}")
 
 seen_items = load_seen()
-logger.info(f"📂 {len(seen_items)} annonces déjà connues (mémoire persistante)")
+logger.info(f"📂 {len(seen_items)} annonces déjà connues")
 
 # ----------------------
 # 4. SESSION HTTP
@@ -103,18 +98,14 @@ def check_vinted():
         new_items_count = 0
         for item in items:
             try:
-                # Titre : première ligne du texte visible
                 title = item.get_text(separator="\n").split("\n")[0]
 
-                # Lien
                 link_tag = item.find("a", href=True)
                 link = "https://www.vinted.fr" + link_tag['href'] if link_tag else "Lien non trouvé"
 
-                # Prix
                 price_tag = item.find("div", {"data-testid": "item-price"})
                 price = price_tag.get_text(strip=True) if price_tag else "Prix non trouvé"
 
-                # Ignorer les annonces déjà vues
                 if link in seen_items:
                     continue
                 seen_items.add(link)
@@ -136,19 +127,9 @@ def check_vinted():
         logger.error(f"Erreur scraping : {e}")
 
 # ----------------------
-# 7. BOUCLE BOT
-# ----------------------
-def bot_loop():
-    while True:
-        check_vinted()
-        delay = MIN_INTERVAL + random.uniform(0, MAX_JITTER)
-        logger.info(f"⏰ Prochaine vérification dans {int(delay)} secondes")
-        time.sleep(delay)
-
-# ----------------------
-# 8. LANCEMENT
+# 7. LANCEMENT
 # ----------------------
 if __name__ == "__main__":
-    logger.info("🚀 Bot Vinted Requests démarré")
+    logger.info("🚀 Bot Vinted Requests (GitHub Actions) démarré")
     logger.info(f"📡 URL Vinted : {VINTED_URL}")
-    bot_loop()
+    check_vinted()
