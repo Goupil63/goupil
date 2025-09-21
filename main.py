@@ -1,6 +1,5 @@
 # main.py
 import os
-import time
 import logging
 import requests
 import json
@@ -101,7 +100,7 @@ def fetch_latest_links():
         logger.error(f"Erreur récupération des derniers liens : {e}")
         return []
 
-# Initialisation seen_items si vide
+# Initialisation seen_items au premier lancement
 if not seen_items:
     latest_links = fetch_latest_links()
     seen_items.update(latest_links)
@@ -127,6 +126,7 @@ def check_vinted():
         new_items_count = 0
         for item in items[:20]:
             try:
+                # Lien
                 link_tag = item.find("a", href=True)
                 if not link_tag:
                     continue
@@ -138,12 +138,15 @@ def check_vinted():
                 seen_items.add(link)
                 new_items_count += 1
 
+                # Titre
                 title_tag = item.find("h3") or item.find("h1") or item.find("h2")
                 title = title_tag.get_text(strip=True) if title_tag else "Sans titre"
 
+                # Prix
                 price_tag = item.find("div", {"data-testid": "item-price"})
                 price = price_tag.get_text(strip=True) if price_tag else "Prix non trouvé"
 
+                # Image
                 img_tag = item.find("img")
                 img_url = img_tag['src'] if img_tag and img_tag.get('src') else ""
 
@@ -163,10 +166,9 @@ def check_vinted():
         logger.error(f"Erreur scraping : {e}")
 
 # ----------------------
-# 7. RUN UNIQUE
+# 7. LANCEMENT
 # ----------------------
 if __name__ == "__main__":
     logger.info("🚀 Bot Vinted Requests démarré")
     logger.info(f"📡 URL Vinted : {VINTED_URL}")
     check_vinted()
-    logger.info("⏹ Run terminé. Le fichier seen.json a été mis à jour.")
