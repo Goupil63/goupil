@@ -49,6 +49,8 @@ jobs:
         run: |
           git config --global user.name "Vinted Bot"
           git config --global user.email "vinted-bot@example.com"
+          git pull --rebase
           git add seen.json
-          git commit -m "Update seen.json [ci skip]" || echo "Pas de nouvelles annonces à commit"
+          git commit -m "Update seen.json [ci skip]" || echo "✅ Pas de nouvelles annonces à commit"
           git push https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git HEAD:main
+          echo "💾 seen.json mis à jour et poussé sur le repo."
