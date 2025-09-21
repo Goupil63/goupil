@@ -8,40 +8,47 @@ on:
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 10   # sécurité pour ne pas dépasser
+    timeout-minutes: 10   # sécurité pour ne pas dépasser 10 minutes
     concurrency:
       group: vinted-bot
-      cancel-in-progress: false
+      cancel-in-progress: false  # le nouveau run attend que l'ancien se termine
 
     steps:
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.x"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Run bot for 5 minutes
         run: |
-          end=$((SECONDS+300))  # 300s = 5 minutes
-          while [ $SECONDS -lt $end ]; do
-            echo "⏳ Nouvelle analyse..."
-            python main.py
-            sleep $((180 + RANDOM % 120))  # pause aléatoire 180-300s
-          done
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4
+
+      - name: Run Vinted Bot
         env:
           VINTED_URL: ${{ secrets.VINTED_URL }}
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          GH_PAT: ${{ secrets.GH_PAT1 }}
+        run: |
+          echo "⏳ Lancement du Vinted Bot..."
+          end=$((SECONDS+300))  # 5 minutes
+          while [ $SECONDS -lt $end ]; do
+            echo "📡 Nouvelle analyse à $(date +'%H:%M:%S')..."
+            python main.py
+            # délai aléatoire entre 180 et 360 secondes
+            DELAY=$((RANDOM % 180 + 180))
+            echo "⏱ Prochaine analyse dans $DELAY secondes"
+            sleep $DELAY
+          done
+          echo "✅ Fin du run de 5 minutes"
 
-      - name: Commit updated seen.json
+      - name: Commit seen.json
         run: |
           git config --global user.name "Vinted Bot"
-          git config --global user.email "bot@example.com"
+          git config --global user.email "vinted-bot@example.com"
           git add seen.json
-          git commit -m "Update seen.json [ci skip]" || echo "No changes to commit"
-          git pull --rebase origin main
-          git push https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git HEAD:main
+          git commit -m "Update seen.json [ci skip]" || echo "Pas de nouvelles annonces à commit"
+          git push https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git HEAD:main
