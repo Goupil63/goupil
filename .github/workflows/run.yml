@@ -46,8 +46,8 @@ jobs:
           while [ $SECONDS -lt $end ]; do
             echo "📡 Nouvelle analyse à $(date +'%H:%M:%S')..."
             python main.py
-            # délai aléatoire entre 180 et 360 secondes
-            DELAY=$((RANDOM % 180 + 180))
+            # délai aléatoire entre 180 et 300 secondes
+            delay=$((180 + RANDOM % 121))  # 180-300 secondes
             echo "⏱ Prochaine analyse dans $DELAY secondes"
             sleep $DELAY
           done
