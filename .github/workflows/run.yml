@@ -1,11 +1,12 @@
 name: Vinted Bot
 
 on:
-  workflow_dispatch: # permet de lancer manuellement
+  workflow_dispatch: # permet de lancer manuellement le workflow
 
 jobs:
-  vinted:
+  run-vinted-bot:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -27,13 +28,15 @@ jobs:
         run: |
           python main.py
 
-      - name: Commit seen.json with PAT
-        env:
-          PAT_GITHUB: ${{ secrets.PAT_GITHUB }} # ton token GitHub
+      - name: Configure Git
         run: |
           git config --global user.name "Vinted Bot"
-          git config --global user.email "vinted-bot@example.com"
-          git remote set-url origin https://$PAT_GITHUB@github.com/<Goupil63>/<goupil>.git
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit seen.json
+        env:
+          GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
+        run: |
           git add seen.json
           git commit -m "Update seen.json [ci skip]" || echo "No changes to commit"
-          git push
+          git push https://$GITHUB_PAT@github.com/Goupil63/goupil.git HEAD:main
