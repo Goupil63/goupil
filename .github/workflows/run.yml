@@ -2,8 +2,6 @@ name: Vinted Bot
 
 on:
   workflow_dispatch: # permet de lancer manuellement
-  schedule:
-    - cron: '*/5 * * * *' # toutes les 5 minutes (optionnel)
 
 jobs:
   vinted:
