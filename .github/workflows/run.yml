@@ -49,6 +49,7 @@ jobs:
         run: |
           git config --global user.name "Vinted Bot"
           git config --global user.email "vinted-bot@example.com"
+          git remote set-url origin https://$GH_PAT1@github.com/Goupil63/goupil.git
           git pull --rebase
           git add seen.json
           git commit -m "Update seen.json [ci skip]" || echo "✅ Pas de nouvelles annonces à commit"
