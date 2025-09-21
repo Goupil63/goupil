@@ -1,49 +1,48 @@
-name: Vinted Bot
+name: Vinted Scraper
 
 on:
+  workflow_dispatch:   # lancement manuel possible
   schedule:
-    - cron: "0 * * * *"   # Lance le run chaque heure
-  workflow_dispatch:       # Permet de le lancer manuellement
+    - cron: "0 * * * *"   # relance automatique toutes les heures pile
 
 jobs:
-  vinted:
+  scrape:
     runs-on: ubuntu-latest
+
+    concurrency:
+      group: vinted-scraper
+      cancel-in-progress: true   # empêche 2 runs en parallèle
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          token: ${{ secrets.GH_PAT1 }}   # ton PAT
+          token: ${{ secrets.GH_PAT1 }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: "3.x"
 
       - name: Install dependencies
-        run: pip install requests beautifulsoup4
+        run: pip install -r requirements.txt
 
-      - name: Run bot with loop
-        env:
-          VINTED_URL: ${{ secrets.VINTED_URL }}
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          GH_PAT1: ${{ secrets.GH_PAT1 }}
-          REPO: ${{ github.repository }}
+      - name: Run scraper for 1h
         run: |
-          echo "🚀 Lancement du bot pour 1 heure"
-          END=$((SECONDS+3600))
-          while [ $SECONDS -lt $END ]; do
-            echo "🔍 Scraping..."
-            python3 main.py
-
-            echo "💾 Commit seen.json"
-            git config --global user.email "bot@users.noreply.github.com"
-            git config --global user.name "Vinted Bot"
-            git add seen.json
-            git commit -m "Update seen.json [ci skip]" || echo "No changes"
-            git push https://x-access-token:${GH_PAT1}@github.com/${REPO}.git HEAD:main
-
-            # Pause aléatoire 180–300 sec
-            SLEEP=$((180 + RANDOM % 121))
-            echo "⏳ Pause de $SLEEP secondes"
-            sleep $SLEEP
+          end=$((SECONDS+3600))  # 3600s = 1h
+          while [ $SECONDS -lt $end ]; do
+            echo "⏳ Nouvelle analyse..."
+            python main.py
+            delay=$((180 + RANDOM % 120))  # 180 à 300s
+            echo "⏸️ Pause $delay secondes"
+            sleep $delay
           done
+
+      - name: Commit & Push seen.json
+        run: |
+          git config --global user.name "Vinted Bot"
+          git config --global user.email "actions@github.com"
+          git pull --rebase origin main || true
+          git add seen.json
+          git commit -m "Update seen.json [ci skip]" || echo "No changes to commit"
+          git push origin main
