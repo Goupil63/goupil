@@ -1,20 +1,21 @@
+# .github/workflows/run.yml
 name: Vinted Bot
 
 on:
-  workflow_dispatch: # permet de lancer manuellement le workflow
+  workflow_dispatch: # permet un lancement manuel
 
 jobs:
   run-vinted-bot:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
@@ -28,15 +29,12 @@ jobs:
         run: |
           python main.py
 
-      - name: Configure Git
-        run: |
-          git config --global user.name "Vinted Bot"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
       - name: Commit seen.json
         env:
           GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
         run: |
+          git config --global user.name "Vinted Bot"
+          git config --global user.email "vinted-bot@example.com"
           git add seen.json
           git commit -m "Update seen.json [ci skip]" || echo "No changes to commit"
           git push https://$GITHUB_PAT@github.com/Goupil63/goupil.git HEAD:main
