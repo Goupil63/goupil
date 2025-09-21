@@ -1,31 +1,29 @@
 import os
-import time
-import random
 import logging
 import requests
 import json
 from bs4 import BeautifulSoup
-from datetime import datetime, timedelta
 
 # ----------------------
-# CONFIGURATION
+# 1. CONFIGURATION
 # ----------------------
 VINTED_URL = os.getenv("VINTED_URL")
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK")
 SEEN_FILE = "seen.json"
 
-MIN_DELAY = 180   # délai minimum entre 2 scrapes (secondes)
-MAX_DELAY = 300   # délai maximum entre 2 scrapes (secondes)
-RUN_DURATION = 60 * 60  # durée totale du run (1 heure)
+if not VINTED_URL:
+    raise SystemExit("⚠️ VINTED_URL non configuré dans les Secrets.")
+if not DISCORD_WEBHOOK:
+    raise SystemExit("⚠️ DISCORD_WEBHOOK non configuré dans les Secrets.")
 
 # ----------------------
-# LOGGING
+# 2. LOGGING
 # ----------------------
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("vinted-bot")
 
 # ----------------------
-# SESSION HTTP
+# 3. SESSION HTTP
 # ----------------------
 session = requests.Session()
 session.headers.update({
@@ -35,7 +33,7 @@ session.headers.update({
 })
 
 # ----------------------
-# MEMOIRE PERSISTANTE
+# 4. MEMOIRE PERSISTANTE
 # ----------------------
 def load_seen():
     if os.path.exists(SEEN_FILE):
@@ -50,7 +48,7 @@ def save_seen(seen_items):
 seen_items = load_seen()
 
 # ----------------------
-# DISCORD
+# 5. DISCORD
 # ----------------------
 def send_to_discord(title, price, link, img_url=""):
     if not title or not link:
@@ -72,110 +70,72 @@ def send_to_discord(title, price, link, img_url=""):
         logger.error(f"Erreur en envoyant à Discord : {e}")
 
 # ----------------------
-# SCRAPER VINTED
+# 6. SCRAPER VINTED (one-shot)
 # ----------------------
-def fetch_latest_links():
-    """Récupère les 20 dernières annonces"""
+def check_vinted():
     try:
         resp = session.get(VINTED_URL, timeout=12)
         if resp.status_code != 200:
             logger.warning(f"Réponse inattendue {resp.status_code}")
-            return []
-        soup = BeautifulSoup(resp.text, "html.parser")
-        container = soup.find("div", class_="feed-grid")
-        if not container:
-            logger.warning("❌ Container feed-grid non trouvé")
-            return []
-        items = container.find_all("div", class_="feed-grid__item")
-        links = []
-        for item in items[:20]:
-            link_tag = item.find("a", href=True)
-            if not link_tag:
-                continue
-            link = link_tag['href']
-            if not link.startswith("http"):
-                link = "https://www.vinted.fr" + link
-            links.append(link)
-        return links
-    except Exception as e:
-        logger.error(f"Erreur récupération des derniers liens : {e}")
-        return []
-
-def scrape_and_notify():
-    try:
-        resp = session.get(VINTED_URL, timeout=12)
-        if resp.status_code != 200:
-            logger.warning(f"Réponse inattendue {resp.status_code}")
-            return 0
+            return
 
         soup = BeautifulSoup(resp.text, "html.parser")
         container = soup.find("div", class_="feed-grid")
         if not container:
             logger.warning("❌ Container feed-grid non trouvé")
-            return 0
+            return
 
         items = container.find_all("div", class_="feed-grid__item")
         logger.info(f"📦 {len(items)} annonces détectées sur la page")
 
         new_items_count = 0
         for item in items[:20]:
-            link_tag = item.find("a", href=True)
-            if not link_tag:
-                continue
-            link = link_tag['href']
-            if not link.startswith("http"):
-                link = "https://www.vinted.fr" + link
-            if link in seen_items:
-                continue
-            seen_items.add(link)
-            new_items_count += 1
+            try:
+                # Lien
+                link_tag = item.find("a", href=True)
+                if not link_tag:
+                    continue
+                link = link_tag['href']
+                if not link.startswith("http"):
+                    link = "https://www.vinted.fr" + link
 
-            # Titre
-            title_tag = item.find("h3") or item.find("h1") or item.find("h2")
-            title = title_tag.get_text(strip=True) if title_tag else "Sans titre"
+                if link in seen_items:
+                    continue
+                seen_items.add(link)
+                new_items_count += 1
 
-            # Prix
-            price_tag = item.find("div", {"data-testid": "item-price"})
-            price = price_tag.get_text(strip=True) if price_tag else "Prix non trouvé"
+                # Titre
+                title_tag = item.find("h3") or item.find("h1") or item.find("h2")
+                title = title_tag.get_text(strip=True) if title_tag else "Sans titre"
 
-            # Image
-            img_tag = item.find("img")
-            img_url = img_tag['src'] if img_tag and img_tag.get('src') else ""
+                # Prix
+                price_tag = item.find("div", {"data-testid": "item-price"})
+                price = price_tag.get_text(strip=True) if price_tag else "Prix non trouvé"
 
-            logger.info(f"📬 Nouvelle annonce : {title} - {price}\n🔗 {link}")
-            send_to_discord(title, price, link, img_url)
+                # Image
+                img_tag = item.find("img")
+                img_url = img_tag['src'] if img_tag and img_tag.get('src') else ""
+
+                logger.info(f"📬 Nouvelle annonce : {title} - {price}\n🔗 {link}")
+                send_to_discord(title, price, link, img_url)
+            except Exception as e:
+                logger.error(f"Erreur traitement annonce : {e}")
 
         save_seen(seen_items)
-        return new_items_count
+
+        if new_items_count == 0:
+            logger.info("✅ Aucune nouvelle annonce")
+        else:
+            logger.info(f"📬 {new_items_count} nouvelles annonces envoyées")
 
     except Exception as e:
         logger.error(f"Erreur scraping : {e}")
-        return 0
 
 # ----------------------
-# BOUCLE PRINCIPALE
+# 7. LANCEMENT (one-shot)
 # ----------------------
 if __name__ == "__main__":
-    start_time = datetime.now()
-    end_time = start_time + timedelta(seconds=RUN_DURATION)
-    logger.info("🚀 Bot Vinted Requests démarré")
+    logger.info("🚀 Bot Vinted démarré (one-shot)")
     logger.info(f"📡 URL Vinted : {VINTED_URL}")
-
-    # Initialisation avec les 20 dernières annonces
-    if not seen_items:
-        latest_links = fetch_latest_links()
-        seen_items.update(latest_links)
-        save_seen(seen_items)
-        logger.info(f"⚡ Initialisation : {len(latest_links)} dernières annonces mémorisées.")
-
-    while datetime.now() < end_time:
-        new_count = scrape_and_notify()
-        if new_count == 0:
-            logger.info("✅ Aucune nouvelle annonce")
-        else:
-            logger.info(f"📬 {new_count} nouvelles annonces envoyées")
-        delay = random.randint(MIN_DELAY, MAX_DELAY)
-        logger.info(f"⏰ Pause aléatoire de {delay} secondes avant le prochain scan")
-        time.sleep(delay)
-
-    logger.info("⏹️ Run terminé après 1 heure.")
+    check_vinted()
+    logger.info("🏁 Fin du run")
