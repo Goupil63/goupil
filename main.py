@@ -1,7 +1,6 @@
 # main.py
 import os
 import time
-import random
 import logging
 import requests
 import json
@@ -10,7 +9,7 @@ from bs4 import BeautifulSoup
 # ----------------------
 # 1. CONFIGURATION
 # ----------------------
-VINTED_URL = os.getenv("VINTED_URL")
+VINTED_URL = os.getenv("VINTED_URL")  # URL de ta recherche Vinted
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK")
 SEEN_FILE = "seen.json"
 
@@ -18,9 +17,6 @@ if not VINTED_URL:
     raise SystemExit("⚠️ VINTED_URL non configuré dans les Secrets.")
 if not DISCORD_WEBHOOK:
     raise SystemExit("⚠️ DISCORD_WEBHOOK non configuré dans les Secrets.")
-
-MIN_INTERVAL = 180  # 3 minutes
-MAX_JITTER = 120    # jusqu'à 2 minutes aléatoires
 
 # ----------------------
 # 2. LOGGING
@@ -49,7 +45,7 @@ def load_seen():
 
 def save_seen(seen_items):
     with open(SEEN_FILE, "w") as f:
-        json.dump(list(seen_items), f, indent=2)
+        json.dump(list(seen_items), f)
 
 seen_items = load_seen()
 
@@ -71,47 +67,13 @@ def send_to_discord(title, price, link, img_url=""):
     try:
         resp = session.post(DISCORD_WEBHOOK, json=data, timeout=10)
         if resp.status_code // 100 != 2:
-            logger.warning(f"⚠️ Discord Webhook renvoyé {resp.status_code}")
+            logger.warning(f"Discord Webhook renvoyé {resp.status_code}")
     except Exception as e:
         logger.error(f"Erreur en envoyant à Discord : {e}")
 
 # ----------------------
 # 6. SCRAPER VINTED
 # ----------------------
-def fetch_latest_links():
-    """Récupère les 20 dernières annonces et initialise seen_items si vide"""
-    try:
-        resp = session.get(VINTED_URL, timeout=12)
-        if resp.status_code != 200:
-            logger.warning(f"Réponse inattendue {resp.status_code}")
-            return []
-        soup = BeautifulSoup(resp.text, "html.parser")
-        container = soup.find("div", class_="feed-grid")
-        if not container:
-            logger.warning("❌ Container feed-grid non trouvé")
-            return []
-        items = container.find_all("div", class_="feed-grid__item")
-        links = []
-        for item in items[:20]:
-            link_tag = item.find("a", href=True)
-            if not link_tag:
-                continue
-            link = link_tag['href']
-            if not link.startswith("http"):
-                link = "https://www.vinted.fr" + link
-            links.append(link)
-        return links
-    except Exception as e:
-        logger.error(f"Erreur récupération des derniers liens : {e}")
-        return []
-
-# Initialisation seen_items au premier lancement
-if not seen_items:
-    latest_links = fetch_latest_links()
-    seen_items.update(latest_links)
-    save_seen(seen_items)
-    logger.info(f"⚡ Initialisation : {len(latest_links)} dernières annonces mémorisées.")
-
 def check_vinted():
     try:
         resp = session.get(VINTED_URL, timeout=12)
@@ -129,7 +91,7 @@ def check_vinted():
         logger.info(f"📦 {len(items)} annonces détectées sur la page")
 
         new_items_count = 0
-        for item in items[:20]:
+        for item in items[:20]:  # dernière 20 annonces seulement
             try:
                 # Lien
                 link_tag = item.find("a", href=True)
@@ -171,9 +133,16 @@ def check_vinted():
         logger.error(f"Erreur scraping : {e}")
 
 # ----------------------
-# 7. EXECUTION UNIQUE
+# 7. RUN TEST UNIQUE
+# ----------------------
+def bot_test():
+    check_vinted()
+    logger.info("🛑 Test terminé : run unique de 2 minutes.")
+
+# ----------------------
+# 8. LANCEMENT
 # ----------------------
 if __name__ == "__main__":
-    logger.info("🚀 Bot Vinted Requests démarré (mode GitHub Actions)")
+    logger.info("🚀 Bot Vinted Test démarré")
     logger.info(f"📡 URL Vinted : {VINTED_URL}")
-    check_vinted()
+    bot_test()
