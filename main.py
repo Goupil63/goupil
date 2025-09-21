@@ -133,10 +133,29 @@ def check_vinted():
         logger.error(f"Erreur scraping : {e}")
 
 # ----------------------
-# 7. LANCEMENT (one-shot)
+# 7. BOUCLE BOT AVEC DUREE LIMITEE
+# ----------------------
+def bot_loop():
+    end_time = time.time() + RUN_DURATION
+    while time.time() < end_time:
+        logger.info("⏳ Nouvelle analyse...")
+        check_vinted()
+
+        # Sleep aléatoire mais ne dépasse pas la fin du run
+        delay = random.uniform(180, 360)  # 3 à 6 minutes
+        time_remaining = end_time - time.time()
+        if time_remaining <= 0:
+            break
+        sleep_time = min(delay, time_remaining)
+        logger.info(f"⏱ Prochaine analyse dans {int(sleep_time)} secondes")
+        time.sleep(sleep_time)
+
+    logger.info("🏁 Fin du run")
+
+# ----------------------
+# 8. LANCEMENT
 # ----------------------
 if __name__ == "__main__":
     logger.info("🚀 Bot Vinted démarré (one-shot)")
     logger.info(f"📡 URL Vinted : {VINTED_URL}")
-    check_vinted()
-    logger.info("🏁 Fin du run")
+    bot_loop()
