@@ -11,7 +11,7 @@ jobs:
     timeout-minutes: 10   # sécurité pour ne pas dépasser
     concurrency:
       group: vinted-bot
-      cancel-in-progress: true
+      cancel-in-progress: false
 
     steps:
       - name: Checkout code
