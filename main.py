@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 # ----------------------
 # 1. CONFIGURATION
 # ----------------------
-VINTED_URL = os.getenv("VINTED_URL")  # URL de ta recherche Vinted
+VINTED_URL = os.getenv("VINTED_URL")
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK")
 SEEN_FILE = "seen.json"
 
@@ -74,6 +74,40 @@ def send_to_discord(title, price, link, img_url=""):
 # ----------------------
 # 6. SCRAPER VINTED
 # ----------------------
+def fetch_latest_links():
+    """Récupère les 20 dernières annonces"""
+    try:
+        resp = session.get(VINTED_URL, timeout=12)
+        if resp.status_code != 200:
+            logger.warning(f"Réponse inattendue {resp.status_code}")
+            return []
+        soup = BeautifulSoup(resp.text, "html.parser")
+        container = soup.find("div", class_="feed-grid")
+        if not container:
+            logger.warning("❌ Container feed-grid non trouvé")
+            return []
+        items = container.find_all("div", class_="feed-grid__item")
+        links = []
+        for item in items[:20]:
+            link_tag = item.find("a", href=True)
+            if not link_tag:
+                continue
+            link = link_tag['href']
+            if not link.startswith("http"):
+                link = "https://www.vinted.fr" + link
+            links.append(link)
+        return links
+    except Exception as e:
+        logger.error(f"Erreur récupération des derniers liens : {e}")
+        return []
+
+# Initialisation seen_items si vide
+if not seen_items:
+    latest_links = fetch_latest_links()
+    seen_items.update(latest_links)
+    save_seen(seen_items)
+    logger.info(f"⚡ Initialisation : {len(latest_links)} dernières annonces mémorisées.")
+
 def check_vinted():
     try:
         resp = session.get(VINTED_URL, timeout=12)
@@ -91,9 +125,8 @@ def check_vinted():
         logger.info(f"📦 {len(items)} annonces détectées sur la page")
 
         new_items_count = 0
-        for item in items[:20]:  # dernière 20 annonces seulement
+        for item in items[:20]:
             try:
-                # Lien
                 link_tag = item.find("a", href=True)
                 if not link_tag:
                     continue
@@ -105,15 +138,12 @@ def check_vinted():
                 seen_items.add(link)
                 new_items_count += 1
 
-                # Titre
                 title_tag = item.find("h3") or item.find("h1") or item.find("h2")
                 title = title_tag.get_text(strip=True) if title_tag else "Sans titre"
 
-                # Prix
                 price_tag = item.find("div", {"data-testid": "item-price"})
                 price = price_tag.get_text(strip=True) if price_tag else "Prix non trouvé"
 
-                # Image
                 img_tag = item.find("img")
                 img_url = img_tag['src'] if img_tag and img_tag.get('src') else ""
 
@@ -133,16 +163,10 @@ def check_vinted():
         logger.error(f"Erreur scraping : {e}")
 
 # ----------------------
-# 7. RUN TEST UNIQUE
-# ----------------------
-def bot_test():
-    check_vinted()
-    logger.info("🛑 Test terminé : run unique de 2 minutes.")
-
-# ----------------------
-# 8. LANCEMENT
+# 7. RUN UNIQUE
 # ----------------------
 if __name__ == "__main__":
-    logger.info("🚀 Bot Vinted Test démarré")
+    logger.info("🚀 Bot Vinted Requests démarré")
     logger.info(f"📡 URL Vinted : {VINTED_URL}")
-    bot_test()
+    check_vinted()
+    logger.info("⏹ Run terminé. Le fichier seen.json a été mis à jour.")
