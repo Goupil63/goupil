@@ -1,9 +1,9 @@
 name: Vinted Scraper
 
 on:
-  workflow_dispatch:   # lancement manuel possible
+  workflow_dispatch:   # lancement manuel
   schedule:
-    - cron: "0 * * * *"   # relance automatique toutes les heures pile
+    - cron: "*/5 * * * *"   # relance toutes les 5 minutes
 
 jobs:
   scrape:
@@ -11,7 +11,7 @@ jobs:
 
     concurrency:
       group: vinted-scraper
-      cancel-in-progress: true   # empêche 2 runs en parallèle
+      cancel-in-progress: true   # évite les doublons
 
     steps:
       - name: Checkout repository
@@ -27,13 +27,13 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run scraper for 1h
+      - name: Run scraper for 5 minutes
         run: |
-          end=$((SECONDS+3600))  # 3600s = 1h
+          end=$((SECONDS+300))  # 300s = 5 minutes
           while [ $SECONDS -lt $end ]; do
             echo "⏳ Nouvelle analyse..."
             python main.py
-            delay=$((180 + RANDOM % 120))  # 180 à 300s
+            delay=$((180 + RANDOM % 120))  # entre 180 et 300s
             echo "⏸️ Pause $delay secondes"
             sleep $delay
           done
