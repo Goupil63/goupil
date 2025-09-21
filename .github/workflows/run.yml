@@ -2,41 +2,48 @@ name: Vinted Bot
 
 on:
   schedule:
-    # Toutes les heures pile
-    - cron: "0 * * * *"
-  workflow_dispatch: # Permet de le lancer manuellement si besoin
+    - cron: "0 * * * *"   # Lance le run chaque heure
+  workflow_dispatch:       # Permet de le lancer manuellement
 
 jobs:
-  run-bot:
+  vinted:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout du repo
+      - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GH_PAT1 }}   # ton PAT
 
-      - name: Configurer Python
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: "3.10"
 
-      - name: Installer les dépendances
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
 
-      - name: Lancer le bot pendant 1h
+      - name: Run bot with loop
         env:
           VINTED_URL: ${{ secrets.VINTED_URL }}
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-        run: |
-          timeout 3600 python main.py
-
-      - name: Commit et push du seen.json
-        env:
           GH_PAT1: ${{ secrets.GH_PAT1 }}
+          REPO: ${{ github.repository }}
         run: |
-          git config --global user.name "Vinted Bot"
-          git config --global user.email "bot@example.com"
-          git add seen.json
-          git commit -m "Update seen.json [ci skip]" || echo "No changes to commit"
-          git push https://x-access-token:${GH_PAT1}@github.com/${{ github.repository }}.git HEAD:main
+          echo "🚀 Lancement du bot pour 1 heure"
+          END=$((SECONDS+3600))
+          while [ $SECONDS -lt $END ]; do
+            echo "🔍 Scraping..."
+            python3 main.py
+
+            echo "💾 Commit seen.json"
+            git config --global user.email "bot@users.noreply.github.com"
+            git config --global user.name "Vinted Bot"
+            git add seen.json
+            git commit -m "Update seen.json [ci skip]" || echo "No changes"
+            git push https://x-access-token:${GH_PAT1}@github.com/${REPO}.git HEAD:main
+
+            # Pause aléatoire 180–300 sec
+            SLEEP=$((180 + RANDOM % 121))
+            echo "⏳ Pause de $SLEEP secondes"
+            sleep $SLEEP
+          done
