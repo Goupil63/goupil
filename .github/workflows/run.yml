@@ -13,20 +13,28 @@ jobs:
       group: vinted-bot
       cancel-in-progress: false  # le nouveau run attend que l'ancien se termine
 
+      
+# 1️⃣ Récupération du code
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+        
+# 2️⃣ Setup Python
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.x"
 
+
+# 3️⃣ Installation des dépendances
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install requests beautifulsoup4
 
+
+# 4️⃣ Lancement du script
       - name: Run Vinted Bot
         env:
           VINTED_URL: ${{ secrets.VINTED_URL }}
@@ -45,13 +53,11 @@ jobs:
           done
           echo "✅ Fin du run de 5 minutes"
 
+# 5️⃣ Commit automatique de seen.json
       - name: Commit seen.json
         run: |
           git config --global user.name "Vinted Bot"
           git config --global user.email "vinted-bot@example.com"
-          git remote set-url origin https://$GH_PAT1@github.com/Goupil63/goupil.git
-          git pull --rebase
           git add seen.json
           git commit -m "Update seen.json [ci skip]" || echo "✅ Pas de nouvelles annonces à commit"
-          git push https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git HEAD:main
-          echo "💾 seen.json mis à jour et poussé sur le repo."
+          git push https://x-access-token:${{ secrets.GH_PAT1 }}@github.com/Goupil63/goupil.git HEAD:main
