@@ -1,47 +1,44 @@
 name: Vinted Bot
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # Lancement manuel
   schedule:
-    - cron: "*/5 * * * *"  # toutes les 5 minutes
+    - cron: "*/5 * * * *"  # Toutes les 5 minutes
+
+concurrency:
+  group: vinted-bot
+  cancel-in-progress: false  # Laisser chaque run se terminer normalement
 
 jobs:
-  run-bot:
+  scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 10   # sécurité pour ne pas dépasser
-    concurrency:
-      group: vinted-bot
-      cancel-in-progress: true
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.x"
+          python-version: 3.10
 
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run bot for 5 minutes
-        run: |
-          end=$((SECONDS+300))  # 300s = 5 minutes
-          while [ $SECONDS -lt $end ]; do
-            echo "⏳ Nouvelle analyse..."
-            python main.py
-            sleep $((180 + RANDOM % 120))  # pause aléatoire 180-300s
-          done
+      - name: Run scraper with auto-exit
         env:
+          GH_PAT1: ${{ secrets.GH_PAT1 }}
           VINTED_URL: ${{ secrets.VINTED_URL }}
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-
-      - name: Commit updated seen.json
         run: |
-          git config --global user.name "Vinted Bot"
-          git config --global user.email "bot@example.com"
-          git add seen.json
-          git commit -m "Update seen.json [ci skip]" || echo "No changes to commit"
-          git pull --rebase origin main
-          git push https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git HEAD:main
+          echo "🚀 Lancement du scraping..."
+          end=$((SECONDS+270))  # ⏱ 4m30 → finit avant le prochain run
+
+          while [ $SECONDS -lt $end ]; do
+            echo "🔍 Nouvelle analyse..."
+            python main.py  # ton script complet avec webhook, json, etc.
+
+            sleep $((RANDOM % 120 + 180))  # délai aléatoire 180–300s
+          done
+
+          echo "✅ Run terminé proprement avant relance"
