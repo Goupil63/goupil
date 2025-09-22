@@ -8,7 +8,7 @@ on:
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 10   # sécurité pour ne pas dépasser 10 minutes
+    
     concurrency:
       group: vinted-bot
       cancel-in-progress: false  # le nouveau run attend que l'ancien se termine
