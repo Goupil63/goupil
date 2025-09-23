@@ -3,7 +3,7 @@ name: Vinted Bot
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */5 * * *"  # toutes les 5 heures à HH:00
+    - cron: "0 */2 * * *"  # toutes les 2 heures à HH:00
 
 jobs:
   run-bot:
