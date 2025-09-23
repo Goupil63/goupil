@@ -125,6 +125,7 @@ def check_vinted():
                 logger.error(f"Erreur traitement annonce : {e}")
 
         save_seen(seen_items)
+        logger.info("💾 Fichier seen.json mis à jour après ce scraping")
 
         if new_items_count == 0:
             logger.info("✅ Aucune nouvelle annonce")
