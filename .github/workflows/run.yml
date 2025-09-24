@@ -1,4 +1,4 @@
-name: Vinted Bot
+name: Goupil
 
 on:
   workflow_dispatch:
