@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 # ----------------------
 # 1. CONFIGURATION
 # ----------------------
-VINTED_URL = os.getenv("VINTED_URL")
+VINTED_URLS = os.getenv("VINTED_URLS", "").split(',')
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK")
 SEEN_FILE = "seen.json"
 RUN_DURATION = 300  # durée du run en secondes 300 secondes soit 5 minutes
@@ -75,65 +75,74 @@ def send_to_discord(title, price, link, img_url=""):
 # ----------------------
 # 6. SCRAPER VINTED (one-shot)
 # ----------------------
+# ----------------------
+# 6. SCRAPER VINTED (one-shot)
+# ----------------------
 def check_vinted():
-    try:
-        resp = session.get(VINTED_URL, timeout=12)
-        if resp.status_code != 200:
-            logger.warning(f"Réponse inattendue {resp.status_code}")
-            return
+    total_new_items = 0
+    # Boucle sur chaque URL dans la liste
+    for url in VINTED_URLS:
+        logger.info(f"⏳ Analyse de l'URL : {url}")
+        try:
+            resp = session.get(url, timeout=12)
+            if resp.status_code != 200:
+                logger.warning(f"Réponse inattendue {resp.status_code} pour l'URL {url}")
+                continue # Passe à l'URL suivante
 
-        soup = BeautifulSoup(resp.text, "html.parser")
-        container = soup.find("div", class_="feed-grid")
-        if not container:
-            logger.warning("❌ Container feed-grid non trouvé")
-            return
+            soup = BeautifulSoup(resp.text, "html.parser")
+            container = soup.find("div", class_="feed-grid")
+            if not container:
+                logger.warning(f"❌ Container feed-grid non trouvé pour l'URL {url}")
+                continue # Passe à l'URL suivante
 
-        items = container.find_all("div", class_="feed-grid__item")
-        logger.info(f"📦 {len(items)} annonces détectées sur la page")
+            items = container.find_all("div", class_="feed-grid__item")
+            logger.info(f"📦 {len(items)} annonces détectées sur la page {url}")
 
-        new_items_count = 0
-        for item in items[:20]:
-            try:
-                # Lien
-                link_tag = item.find("a", href=True)
-                if not link_tag:
-                    continue
-                link = link_tag['href']
-                if not link.startswith("http"):
-                    link = "https://www.vinted.fr" + link
+            new_items_count = 0
+            for item in items[:20]:
+                try:
+                    # Lien
+                    link_tag = item.find("a", href=True)
+                    if not link_tag:
+                        continue
+                    link = link_tag['href']
+                    if not link.startswith("http"):
+                        link = "https://www.vinted.fr" + link
 
-                if link in seen_items:
-                    continue
-                seen_items.add(link)
-                new_items_count += 1
+                    if link in seen_items:
+                        continue
+                    seen_items.add(link)
+                    new_items_count += 1
 
-                # Titre
-                title_tag = item.find("h3") or item.find("h1") or item.find("h2")
-                title = title_tag.get_text(strip=True) if title_tag else "Sans titre"
+                    # Titre
+                    title_tag = item.find("h3") or item.find("h1") or item.find("h2")
+                    title = title_tag.get_text(strip=True) if title_tag else "Sans titre"
 
-                # Prix
-                price_tag = item.find("div", {"data-testid": "item-price"})
-                price = price_tag.get_text(strip=True) if price_tag else "Prix non trouvé"
+                    # Prix
+                    price_tag = item.find("div", {"data-testid": "item-price"})
+                    price = price_tag.get_text(strip=True) if price_tag else "Prix non trouvé"
 
-                # Image
-                img_tag = item.find("img")
-                img_url = img_tag['src'] if img_tag and img_tag.get('src') else ""
+                    # Image
+                    img_tag = item.find("img")
+                    img_url = img_tag['src'] if img_tag and img_tag.get('src') else ""
 
-                logger.info(f"📬 Nouvelle annonce : {title} - {price}\n🔗 {link}")
-                send_to_discord(title, price, link, img_url)
-            except Exception as e:
-                logger.error(f"Erreur traitement annonce : {e}")
+                    logger.info(f"📬 Nouvelle annonce : {title} - {price}\n🔗 {link}")
+                    send_to_discord(title, price, link, img_url)
+                except Exception as e:
+                    logger.error(f"Erreur traitement annonce pour l'URL {url}: {e}")
 
-        save_seen(seen_items)
-        logger.info("💾 Fichier seen.json mis à jour après ce scraping")
+            total_new_items += new_items_count
 
-        if new_items_count == 0:
-            logger.info("✅ Aucune nouvelle annonce")
-        else:
-            logger.info(f"📬 {new_items_count} nouvelles annonces envoyées")
+        except Exception as e:
+            logger.error(f"Erreur scraping pour l'URL {url}: {e}")
 
-    except Exception as e:
-        logger.error(f"Erreur scraping : {e}")
+    save_seen(seen_items)
+    logger.info("💾 Fichier seen.json mis à jour après ce scraping")
+
+    if total_new_items == 0:
+        logger.info("✅ Aucune nouvelle annonce sur toutes les URL")
+    else:
+        logger.info(f"📬 {total_new_items} nouvelles annonces envoyées au total")
 
 # ----------------------
 # 7. BOUCLE BOT AVEC DUREE LIMITEE
