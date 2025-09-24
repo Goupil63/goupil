@@ -39,7 +39,7 @@ jobs:
 # 4️⃣ Lancement du script
       - name: Run Vinted Bot
         env:
-          VINTED_URLS: "https://www.vinted.fr/catalog?search_text=les%20demeures%20de%20l%27%C3%A9pouvante&catalog[]=4824&page=1&time=1758482317&order=newest_first,https://www.vinted.fr/catalog?search_text=mansion%20of%20madness&catalog[]=4824&page=1&time=1758746747&order=newest_first,https://www.vinted.fr/catalog?search_text=mansions%20of%20madness&catalog[]=4824&page=1&time=1758746815&order=newest_first,https://www.vinted.fr/catalog?search_text=Recurring%20Nightmares&catalog[]=4824&page=1&time=1758746867&order=newest_first,https://www.vinted.fr/catalog?search_text=Recurring%20Nightmares&catalog[]=4824&page=1&time=1758746867&order=newest_first"
+          VINTED_URLS: "https://www.vinted.fr/catalog?search_text=les%20demeures%20de%20l%27%C3%A9pouvante&catalog[]=4824&page=1&time=1758482317&order=newest_first,https://www.vinted.fr/catalog?search_text=mansion%20of%20madness&catalog[]=4824&page=1&time=1758746747&order=newest_first,https://www.vinted.fr/catalog?search_text=mansions%20of%20madness&catalog[]=4824&page=1&time=1758746815&order=newest_first,https://www.vinted.fr/catalog?search_text=Recurring%20Nightmares&catalog[]=4824&page=1&time=1758746867&order=newest_first,https://www.vinted.fr/catalog?search_text=Recurring%20Nightmares&catalog[]=4824&page=1&time=1758746867&order=newest_first,https://www.vinted.fr/catalog?search_text=les%20contr%C3%A9es%20de%20l%27horreur&catalog[]=4824&page=1&time=1758748760&order=newest_first,https://www.vinted.fr/catalog?search_text=horreur%20%C3%A0%20arkham&catalog[]=4824&page=1&time=1758748852&order=newest_first"
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}          
         run: python main.py
           
