@@ -48,8 +48,8 @@ jobs:
             python main.py
             # délai aléatoire entre 180 et 300 secondes
             delay=$((180 + RANDOM % 121))  # 180-300 secondes
-            echo "⏱ Prochaine analyse dans $DELAY secondes"
-            sleep $DELAY
+            echo "⏱ Prochaine analyse dans $delay secondes"
+            sleep $delay
           done
           echo "✅ Fin du run de 5 minutes"
 
