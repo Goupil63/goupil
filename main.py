@@ -14,7 +14,7 @@ DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK")
 SEEN_FILE = "seen.json"
 RUN_DURATION = 300  # durée du run en secondes 300 secondes soit 5 minutes
 
-if not VINTED_URL:
+if not VINTED_URLS:
     raise SystemExit("⚠️ VINTED_URLS non configuré dans les Secrets.")
 if not DISCORD_WEBHOOK:
     raise SystemExit("⚠️ DISCORD_WEBHOOK non configuré dans les Secrets.")
