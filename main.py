@@ -96,8 +96,7 @@ def check_vinted():
                 continue # Passe à l'URL suivante
 
             items = container.find_all("div", class_="feed-grid__item")
-            logger.info(f"📦 {len(items)} annonces détectées sur la page {url}")
-
+            
             new_items_count = 0
             for item in items[:20]:
                 try:
