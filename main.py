@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup
 VINTED_URLS = os.getenv("VINTED_URLS", "").split(',')
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK")
 SEEN_FILE = "seen.json"
-RUN_DURATION = 300  # durée du run en secondes 300 secondes soit 5 minutes
+RUN_DURATION = 1 * 3600 + 50 * 60  # Durée du run en secondes (1h50)
 
 if not VINTED_URLS:
     raise SystemExit("⚠️ VINTED_URLS non configuré dans les Secrets.")
