@@ -8,7 +8,9 @@ on:
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: write # Ajout de cette ligne
+      
     concurrency:
       group: vinted-bot
       cancel-in-progress: false  # le nouveau run attend que l'ancien se termine
@@ -38,18 +40,15 @@ jobs:
       - name: Run Vinted Bot
         env:
           VINTED_URL: ${{ secrets.VINTED_URL }}
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          GH_PAT: ${{ secrets.GH_PAT1 }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}          
         run: python main.py
           
 
 # 5️⃣ Commit automatique de seen.json
-      - name: Commit seen.json
-        env:
-          GH_PAT: ${{ secrets.GH_PAT1 }}
+      - name: Commit seen.json        
         run: |
           git config --global user.name "Vinted Bot"
           git config --global user.email "vinted-bot@example.com"
           git add seen.json
           git commit -m "Update seen.json [ci skip]" || echo "✅ Pas de nouvelles annonces à commit"
-          git push https://x-access-token:${{ secrets.GH_PAT1 }}@github.com/Goupil63/goupil.git HEAD:main
+          git push
