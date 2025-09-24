@@ -127,6 +127,8 @@ def check_vinted():
 
                     logger.info(f"📬 Nouvelle annonce : {title} - {price}\n🔗 {link}")
                     send_to_discord(title, price, link, img_url)
+                    time.sleep(1.5)  # Ajoute une pause de 1,5 seconde
+                    
                 except Exception as e:
                     logger.error(f"Erreur traitement annonce pour l'URL {url}: {e}")
 
