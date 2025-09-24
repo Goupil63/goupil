@@ -45,6 +45,8 @@ jobs:
 
 # 5️⃣ Commit automatique de seen.json
       - name: Commit seen.json
+        env:
+          GH_PAT: ${{ secrets.GH_PAT1 }}
         run: |
           git config --global user.name "Vinted Bot"
           git config --global user.email "vinted-bot@example.com"
