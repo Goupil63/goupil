@@ -40,18 +40,8 @@ jobs:
           VINTED_URL: ${{ secrets.VINTED_URL }}
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           GH_PAT: ${{ secrets.GH_PAT1 }}
-        run: |
-          echo "⏳ Lancement du Vinted Bot..."
-          end=$((SECONDS+300))  # 5 minutes
-          while [ $SECONDS -lt $end ]; do
-            echo "📡 Nouvelle analyse à $(date +'%H:%M:%S')..."
-            python main.py
-            # délai aléatoire entre 180 et 300 secondes
-            delay=$((180 + RANDOM % 121))  # 180-300 secondes
-            echo "⏱ Prochaine analyse dans $delay secondes"
-            sleep $delay
-          done
-          echo "✅ Fin du run de 5 minutes"
+        run: python main.py
+          
 
 # 5️⃣ Commit automatique de seen.json
       - name: Commit seen.json
