@@ -23,7 +23,7 @@ if not DISCORD_WEBHOOK:
 # 2. LOGGING
 # ----------------------
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-logger = logging.getLogger("vinted-bot")
+logger = logging.getLogger("goupil")
 
 # ----------------------
 # 3. SESSION HTTP
