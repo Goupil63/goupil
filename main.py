@@ -173,7 +173,7 @@ def check_vinted():
 def bot_loop():
     end_time = time.time() + RUN_DURATION
     while time.time() < end_time:
-        logger.info("⏳ Nouvelle analyse...")
+        logger.info("▶️ Nouvelle analyse...")
         check_vinted()
 
         # Sleep aléatoire mais ne dépasse pas la fin du run
