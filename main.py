@@ -184,7 +184,7 @@ def bot_loop():
 
     logger.info("🏁 Fin du run")
     save_seen(seen_items)  # sauvegarde finale
-    send_status_message("✅ Run terminé, pense à relancer le bot manuellement 😉")
+    send_status_message("✅ Run terminé !")
 
 # ----------------------
 # 8. LANCEMENT
