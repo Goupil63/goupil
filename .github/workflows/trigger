@@ -5,9 +5,21 @@ on:
     workflows: ["Goupil"]
     types:
       - completed
+    branches:
+      - main # S'assure que le run est sur la branche principale
 
 jobs:
   trigger_next_run:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Autorise à lancer un autre workflow
     steps:
-      - run: echo "Triggering next run of Goupil"
+      - uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.actions.createWorkflowDispatch({
+              owner: '${{ github.repository_owner }}',
+              repo: '${{ github.repository }}',
+              workflow_id: 'Goupil',
+              ref: '${{ github.ref }}'
+            });
