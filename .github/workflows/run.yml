@@ -1,9 +1,15 @@
 name: Goupil
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 */2 * * *'  # Toutes les 2 heures
+  workflow_dispatch: # Permet de lancer manuellement
+  workflow_run:
+    workflows: ["Vinted Bot"] # Le nom du workflow lui-même
+    types:
+      - completed # Se déclenche à la fin de chaque run
+concurrency:
+  group: Goupil
+  cancel-in-progress: true # Annule le run précédent s'il y en a un
+  
 
 jobs:
   run-bot:
