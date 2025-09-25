@@ -2,10 +2,8 @@ name: Goupil
 
 on:
   workflow_dispatch: # Permet de lancer manuellement
-  workflow_run:
-    workflows: ["Goupil"] # Le nom du workflow lui-même
-    types:
-      - completed # Se déclenche à la fin de chaque run
+  workflow_call:
+  
 concurrency:
   group: Goupil
   cancel-in-progress: true # Annule le run précédent s'il y en a un
