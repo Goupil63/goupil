@@ -4,20 +4,16 @@ on:
   workflow_dispatch: # Permet de lancer manuellement
   workflow_call:
   
-concurrency:
-  group: Goupil
-  cancel-in-progress: true # Annule le run précédent s'il y en a un
-  
-
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Ajout de cette ligne
-      
+      contents: write
+
     concurrency:
-      group: vinted-bot
-      cancel-in-progress: true  # Si un run est déjà en cours pour ce groupe, annule-le immédiatement et laisse le nouveau run prendre sa place
+      group: Goupil
+      cancel-in-progress: true
+      
 
       
 # 1️⃣ Récupération du code
