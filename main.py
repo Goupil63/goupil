@@ -182,7 +182,7 @@ def bot_loop():
         if time_remaining <= 0:
             break
         sleep_time = min(delay, time_remaining)
-        logger.info(f"⏱ Prochaine analyse dans {int(sleep_time)} secondes")
+        logger.info(f"🔍 Prochaine analyse dans {int(sleep_time)} secondes")
         time.sleep(sleep_time)
 
     logger.info("🏁 Fin du run")
