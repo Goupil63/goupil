@@ -1,0 +1,13 @@
+name: Vinted Bot Trigger
+
+on:
+  workflow_run:
+    workflows: ["Goupil"]
+    types:
+      - completed
+
+jobs:
+  trigger_next_run:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Triggering next run of Goupil"
