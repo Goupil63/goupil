@@ -101,7 +101,7 @@ def check_vinted():
     total_new_items = 0
     # Boucle sur chaque URL dans la liste
     for url in VINTED_URLS:
-        logger.info(f"⏳ Analyse de l'URL : {url}")
+        logger.info(f"🌐 Analyse de l'URL : {url}")
         try:
             resp = session.get(url, timeout=12)
             if resp.status_code != 200:
@@ -147,7 +147,7 @@ def check_vinted():
                     img_tag = item.find("img")
                     img_url = img_tag['src'] if img_tag and img_tag.get('src') else ""
 
-                    logger.info(f"📬 Nouvelle annonce : {title} - {price}\n🔗 {link}")
+                    logger.info(f"🔔 Nouvelle annonce : {title} - {price}\n🔗 {link}")
                     send_to_discord(title, price, link, img_url)
                     time.sleep(1.5)  # Ajoute une pause de 1,5 seconde
                     
@@ -165,7 +165,7 @@ def check_vinted():
     if total_new_items == 0:
         logger.info("✅ Aucune nouvelle annonce sur toutes les URL")
     else:
-        logger.info(f"📬 {total_new_items} nouvelles annonces envoyées au total")
+        logger.info(f"🔔 {total_new_items} nouvelles annonces envoyées au total")
 
 # ----------------------
 # 7. BOUCLE BOT AVEC DUREE LIMITEE
