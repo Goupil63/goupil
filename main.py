@@ -192,4 +192,5 @@ def bot_loop():
 if __name__ == "__main__":
     logger.info("🚀 Bot Vinted démarré (one-shot)")
     logger.info(f"📡 URL Vinted : {VINTED_URLS}")
+    send_status_message("🚀 C'est parti mon kiki !")
     bot_loop()
