@@ -183,6 +183,8 @@ def bot_loop():
         time.sleep(sleep_time)
 
     logger.info("🏁 Fin du run")
+    save_seen(seen_items)  # sauvegarde finale
+    send_status_message("✅ Run terminé, pense à relancer le bot manuellement 😉")
 
 # ----------------------
 # 8. LANCEMENT
