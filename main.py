@@ -137,8 +137,10 @@ def check_vinted():
                     title = title_tag.get_text(strip=True) if title_tag else "Sans titre"
 
                     # Prix
-                    price_tag = item.find("div", {"data-testid": "item-price"})
-                    price = price_tag.get_text(strip=True) if price_tag else "Prix non trouvé"
+                    price_tag_div = item.find("div", {"data-testid": "item-price"})
+                    price_tag_p = price_tag_div.find("p") if price_tag_div else None
+                    price = price_tag_p.get_text(strip=True) if price_tag_p else "Prix non trouvé"
+
 
                     # Image
                     img_tag = item.find("img")
