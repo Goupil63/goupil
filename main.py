@@ -57,6 +57,21 @@ seen_items = load_seen()
 # ----------------------
 # 5. DISCORD
 # ----------------------
+def send_status_message(message_content):
+    status_webhook_url = os.getenv("DISCORD_WEBHOOK_STATUS")
+    if not status_webhook_url:
+        logger.warning("DISCORD_WEBHOOK_STATUS non configuré, impossible d'envoyer le message de statut.")
+        return
+
+    message = {"content": message_content}
+    try:
+        requests.post(status_webhook_url, json=message, timeout=10)
+        logger.info("Message de statut envoyé avec succès.")
+    except Exception as e:
+        logger.error(f"Erreur lors de l'envoi du message de statut : {e}")
+
+
+
 def send_to_discord(title, price, link, img_url=""):
     if not title or not link:
         logger.warning("Titre ou lien vide, notification Discord ignorée")
