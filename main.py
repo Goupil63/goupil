@@ -118,30 +118,28 @@ def check_vinted():
             
             new_items_count = 0
             for item in items[:20]:
+
                 try:
-                    # Lien
-                    link_tag = item.find("a", href=True)
-                    if not link_tag:
-                        continue
-                    link = link_tag['href']
-                    if not link.startswith("http"):
-                        link = "https://www.vinted.fr" + link
+                    # Lien et extraction du titre et du prix
+                    link_tag = item.find("a", {"data-testid": lambda x: x and 'overlay-link' in x})
+                    
+                    if link_tag and 'title' in link_tag.attrs:
+                        link = link_tag['href']
+                        if not link.startswith("http"):
+                            link = "https://www.vinted.fr" + link
+
+                        full_title = link_tag['title']
+                        parts = full_title.split(', ')
+                        title = parts[0]
+                        price = parts[-2]
+                    else:
+                        continue # Passe à l'article suivant si le lien ou le titre n'est pas trouvé
 
                     if link in seen_items:
                         continue
                     seen_items.add(link)
                     new_items_count += 1
-
-                    # Titre
-                    title_tag = item.find("p", class_="web_ui__Text__caption")
-                    title = title_tag.get_text(strip=True) if title_tag else "Sans titre"
-                                        
-
-                    # Prix
-                    price_tag_div = item.find("div", {"data-testid": "item-price"})
-                    price_tag_p = price_tag_div.find("p") if price_tag_div else None
-                    price = price_tag_p.get_text(strip=True) if price_tag_p else "Prix non trouvé"
-
+                
 
                     # Image
                     img_tag = item.find("img")
