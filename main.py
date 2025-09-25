@@ -133,8 +133,9 @@ def check_vinted():
                     new_items_count += 1
 
                     # Titre
-                    title_tag = item.find("h3") or item.find("h1") or item.find("h2")
+                    title_tag = item.find("h1", class_="web_ui__Text__text web_ui__Text__title web_ui__Text__left")
                     title = title_tag.get_text(strip=True) if title_tag else "Sans titre"
+                                        
 
                     # Prix
                     price_tag_div = item.find("div", {"data-testid": "item-price"})
