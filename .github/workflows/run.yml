@@ -13,7 +13,7 @@ jobs:
       
     concurrency:
       group: vinted-bot
-      cancel-in-progress: false  # le nouveau run attend que l'ancien se termine
+      cancel-in-progress: true  # Si un run est déjà en cours pour ce groupe, annule-le immédiatement et laisse le nouveau run prendre sa place
 
       
 # 1️⃣ Récupération du code
