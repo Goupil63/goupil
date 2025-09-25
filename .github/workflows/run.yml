@@ -3,7 +3,7 @@ name: Goupil
 on:
   workflow_dispatch: # Permet de lancer manuellement
   workflow_run:
-    workflows: ["Vinted Bot"] # Le nom du workflow lui-même
+    workflows: ["Goupil"] # Le nom du workflow lui-même
     types:
       - completed # Se déclenche à la fin de chaque run
 concurrency:
