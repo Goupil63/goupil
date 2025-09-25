@@ -2,17 +2,15 @@ name: Goupil
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 */2 * * *'  # Toutes les 2 heures
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Ajout de cette ligne
+      contents: write 
       
     concurrency:
-      group: vinted-bot
+      group: goupil
       cancel-in-progress: true  # Si un run est déjà en cours pour ce groupe, annule-le immédiatement et laisse le nouveau run prendre sa place
 
       
@@ -40,14 +38,15 @@ jobs:
       - name: Run Vinted Bot
         env:
           VINTED_URLS: "https://www.vinted.fr/catalog?search_text=les%20demeures%20de%20l%27%C3%A9pouvante&catalog[]=4824&page=1&time=1758482317&order=newest_first,https://www.vinted.fr/catalog?search_text=les%20contr%C3%A9es%20de%20l%27horreur&catalog[]=4824&page=1&time=1758748760&order=newest_first,https://www.vinted.fr/catalog?search_text=horreur%20%C3%A0%20arkham&catalog[]=4824&page=1&time=1758748852&order=newest_first"
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}          
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_WEBHOOK_STATUS: ${{ secrets.DISCORD_WEBHOOK_STATUS }}
         run: python main.py
           
 
 # 5️⃣ Commit automatique de seen.json
       - name: Commit seen.json        
         run: |
-          git config --global user.name "Vinted Bot"
+          git config --global user.name "Goupil"
           git config --global user.email "vinted-bot@example.com"
           git add seen.json
           git commit -m "Update seen.json [ci skip]" || echo "✅ Pas de nouvelles annonces à commit"
